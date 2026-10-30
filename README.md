@@ -1,6 +1,7 @@
 <div align="center">
 
-# 🍩 Food Battle Offline
+#  Food Battle Offline: Discord: https://discord.gg/BmYZ72aUM3
+
 
 **A fan preservation project that makes _Smosh: Food Battle The Game_ (2014) fully playable again — no servers required.**
 
