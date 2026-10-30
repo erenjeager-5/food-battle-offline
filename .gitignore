@@ -1,0 +1,24 @@
+# Never commit the game itself or anything extracted from it.
+# This repository only contains original documentation and tooling.
+*.apk
+*.apks
+*.xapk
+*.obb
+*.idsig
+*.dll
+*.so
+*.dat
+*.keystore
+*.jks
+
+# Build inputs/outputs (all derived from the game)
+decoded/
+decoded_orig/
+dumps/
+build/
+build_offline/
+work/
+
+# Python
+__pycache__/
+*.pyc
