@@ -40,7 +40,8 @@ Challenge Mode.
 
 The fixes are written directly into the game's code (no runtime injection, no
 root, no PC needed to play), and every fix uses the game's **own** built-in
-offline behaviour wherever one exists.
+offline behaviour wherever one exists. Join the discord for updates: https://discord.gg/BmYZ72aUM3
+
 
 ## 📸 Screenshots
 
