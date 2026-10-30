@@ -6,7 +6,7 @@
 
 ![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
 ![Game version](https://img.shields.io/badge/game-v1.31-orange)
-![Engine](https://img.shields.io/badge/engine-Unity%204.6-black?logo=unity)
+![Engine](https://img.shields.io/badge/engine-Unity_4.6-222222)
 ![Status](https://img.shields.io/badge/status-playable-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT%20(tools%20%26%20docs)-blue)
 
