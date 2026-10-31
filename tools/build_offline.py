@@ -11,6 +11,8 @@ Inputs (all from YOUR copy of the game - none are included in this repo):
 
 What it does:
   - writes every patch from patches/fixes.js into the decrypted Assembly-CSharp.dll
+  - compiles mod/helper/FoodBattleOffline.cs (crystal exchange, English text fallback)
+    and wires it into the game code with mod/injector (Mono.Cecil); needs the .NET 8 SDK
   - ships the decrypted assemblies and removes the decryptor (libfff_.so)
   - removes the x86 engine libs (emulators then use their ARM translator)
   - merges the OBB into the APK and turns Unity's OBB mode off
@@ -26,6 +28,7 @@ import argparse, hashlib, os, re, shutil, subprocess, sys, zipfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXES = os.path.join(HERE, "..", "patches", "fixes.js")
+MOD = os.path.join(HERE, "..", "mod")
 ASSEMBLY_SIZE = 2300928
 
 # SHA-256 of the inputs the patch offsets were made for (game v1.31).
@@ -70,6 +73,38 @@ def parse_fixes(path):
     for off, name in re.findall(r"\[(0x[0-9a-fA-F]+), '([^']+)'\]", helpers):
         patches.append((int(off, 16), [0x2a], "FoodBattleAnalytics." + name))
     return patches + EXTRA_PATCHES
+
+
+def find_csc():
+    """The C# compiler that ships with the newest installed .NET SDK."""
+    out = subprocess.run(["dotnet", "--list-sdks"], capture_output=True, text=True, check=True).stdout
+    sdks = re.findall(r"^(\S+) \[(.+)\]$", out, re.M)
+    if not sdks:
+        sys.exit("no .NET SDK found - install the .NET 8 SDK (https://dotnet.microsoft.com/download)")
+    version, root = max(sdks, key=lambda v: [int(x) if x.isdigit() else 0 for x in re.split(r"[.-]", v[0])])
+    csc = os.path.join(root, version, "Roslyn", "bincore", "csc.dll")
+    if not os.path.exists(csc):
+        sys.exit("csc.dll not found in " + os.path.join(root, version))
+    return csc
+
+
+def add_offline_features(patched_dll, managed, work):
+    """Compile the helper library against the game's own Mono 2.0 libraries and inject
+    its hooks into the byte-patched Assembly-CSharp.dll. Writes both into Managed/."""
+    mod_work = os.path.join(work, "mod")
+    os.makedirs(mod_work)
+    game_in = os.path.join(mod_work, "Assembly-CSharp.dll")
+    open(game_in, "wb").write(patched_dll)
+    helper = os.path.join(mod_work, "FoodBattleOffline.dll")
+    refs = [os.path.join(managed, n) for n in ("mscorlib.dll", "System.dll", "System.Core.dll", "UnityEngine.dll")]
+    run(["dotnet", find_csc(), "-nologo", "-noconfig", "-nostdlib+", "-target:library", "-langversion:3", "-deterministic",
+         "-optimize+", "-out:" + helper] + ["-r:" + r for r in refs + [game_in]]
+        + [os.path.join(MOD, "helper", "FoodBattleOffline.cs")])
+    injector_dir = os.path.join(MOD, "injector")
+    run(["dotnet", "build", "-c", "Release", "-o", os.path.join(mod_work, "injector"), injector_dir])
+    run(["dotnet", os.path.join(mod_work, "injector", "injector.dll"), game_in, helper,
+         os.path.join(managed, "Assembly-CSharp.dll")])
+    shutil.copy(helper, os.path.join(managed, "FoodBattleOffline.dll"))
 
 
 def check_inputs(args):
@@ -141,7 +176,7 @@ def main():
         assert off + len(data) <= len(dll), name
         dll[off:off + len(data)] = bytes(data)
     print(f"applied {len(patches)} patches to Assembly-CSharp.dll", flush=True)
-    open(os.path.join(managed, "Assembly-CSharp.dll"), "wb").write(dll)
+    add_offline_features(bytes(dll), managed, args.work)
     for name in ("Assembly-CSharp-firstpass.dll", "Assembly-UnityScript.dll"):
         shutil.copy(os.path.join(args.assemblies, name), os.path.join(managed, name))
 

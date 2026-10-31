@@ -18,6 +18,9 @@ playable state after its servers shut down.
   - [8. Analytics crashes](#8-analytics-crashes)
   - [9. Notifications](#9-notifications)
   - [10. Packaging: OBB, Android 14+, emulators](#10-packaging-obb-android-14-emulators)
+  - [11. Pet text placeholders in other languages](#11-pet-text-placeholders-in-other-languages)
+  - [12. Crystals for coins](#12-crystals-for-coins)
+- [The companion library](#the-companion-library)
 - [Retired workarounds](#retired-workarounds)
 - [Lessons learned](#lessons-learned)
 - [Patch reference](#patch-reference)
@@ -52,6 +55,9 @@ images were captured from memory at the point Mono receives them
 5. Early on, patches were applied **at runtime** by Frida. The final build
    writes them **directly into the decrypted DLL** and ships it unencrypted,
    with the decryptor removed — no runtime injection at all.
+6. Features that need new code rather than a few changed bytes live in a small
+   C# library that is wired into the game at build time with Mono.Cecil
+   (see [The companion library](#the-companion-library)).
 
 Every patch is a small, documented IL byte sequence at a fixed file offset in
 the v1.31 `Assembly-CSharp.dll` — see [`patches/fixes.js`](../patches/fixes.js).
@@ -185,6 +191,81 @@ server. **Fix:** restored as part of `PATCH4`.
 | `targetSdkVersion` 21 → 23 | Android 14+ refuses to install apps targeting below 23 |
 | x86 engine libraries removed | On x86 emulators the original x86 Unity player renders only a black screen; without it they use their ARM translator, which works on BlueStacks |
 
+### 11. Pet text placeholders in other languages
+
+The game picks its language from the device on first launch (`LocManager.Initialize`):
+English, French, Italian, German or Spanish. Only English was ever translated; the
+other columns of `localization.csv` hold `FR:`-style placeholders, and with
+`locErrorsEnabled = false` (set in `GameLoader.Awake`) `GetLocString` falls back to
+the English CSV text for them. So the game looks fully English on those devices.
+
+Some labels never appear in the CSV at all. `LocaliseLabel` registers their English
+text from the prefab at runtime (`LocManager.RegisterEnglish`), e.g.
+`Inventory_PetName` = `[PetName] - Lv[Level]`. That registration only goes into the
+English table. In any other language `GetLocString` found nothing, returned `""` (no
+error text, because errors are disabled), and `LocaliseLabel.DoLocaliseLabel` skips
+empty results, so the label kept its raw template. Affected: the pet card, the pet
+XP / level-up screen and the pet evolution screen.
+
+Reproduced on a real device with a test build forced to Spanish, then verified fixed.
+
+**Fix (companion library):** every value `LocManager.GetLocString` returns passes
+through `FoodBattleOffline.EnglishFallback`. In a non-English language, an empty or
+`BAD ID` result for an ID that has registered English text returns that English
+text instead. English devices are unaffected.
+
+### 12. Crystals for coins
+
+Crystals (the premium currency) were sold for real money in Stevie's store
+(`StevieStoreScreen`, Crystals tab) and on the in-level revive screen
+(`ResurrectStoreScreen`). Both list the game's own `IAPFoodPurchase` packs, but
+the titles, descriptions and prices came from Google Play, so offline the tab only
+showed the **Offline** view. That left Challenge Mode rewards as the only source of
+crystals.
+
+**Feature (companion library):**
+
+| Hook | Behaviour |
+|---|---|
+| `StevieStoreScreen.CheckForOnline` | same as the original, except the Crystals tab is always available |
+| `UIStoreIAP.Populate` (prologue) | a crystal-only pack is filled in locally: title from the pack name, price in coins |
+| `UIStoreIAP.Handle_BuyClicked` (prologue) | first tap arms the pack ("Tap again to buy"), a second tap within 4 s spends the coins, adds the crystals and saves; not enough coins shows "Need N coins" |
+
+Prices follow the original store tiers: each crystal pack costs the coins of the
+coin pack in the same tier, about 20 coins per crystal.
+
+| Pack | Crystals | Coins |
+|---|---|---|
+| Starter | 5 | 100 |
+| Small | 25 | 500 |
+| Medium | 60 | 1,500 |
+| Large | 150 | 5,000 |
+| Massive | 400 | 10,000 |
+| Epic | 1,000 | 30,000 |
+
+The Coins tab stays offline: there is nothing sensible to pay for coins with.
+
+---
+
+## The companion library
+
+[`mod/helper/FoodBattleOffline.cs`](../mod/helper/FoodBattleOffline.cs) is compiled
+with the .NET SDK's C# compiler against the game's **own** Mono 2.0 `mscorlib`,
+`System`, `System.Core` and `UnityEngine` (`-nostdlib`, C# 3), so it only uses APIs
+the game's runtime has. It ships as `Managed/FoodBattleOffline.dll`; Mono loads it
+from there like any other game assembly.
+
+[`mod/injector`](../mod/injector/Program.cs) (Mono.Cecil) then edits the
+byte-patched `Assembly-CSharp.dll`:
+
+- inserts the hooks listed in [11](#11-pet-text-placeholders-in-other-languages)
+  and [12](#12-crystals-for-coins), which call into the library
+- trims the dead IL that some byte patches leave behind an early `ret` (the
+  analytics no-ops and `PlayerData.Load`); Cecil cannot re-encode those bytes,
+  and they are unreachable, so behaviour is unchanged
+
+The C# compile is deterministic, so a build from the same inputs is byte-identical.
+
 ---
 
 ## Retired workarounds
@@ -218,6 +299,8 @@ had been removing real content:
   patches in instead of injecting them.
 - **Prefer the game's own fallbacks.** Almost every fix routes into code the
   original developers wrote for offline or ad-free play.
+- **Test in other languages.** The game silently changes behaviour with the
+  device language; a forced-language test build is a cheap way to check.
 
 ## Patch reference
 
@@ -226,3 +309,5 @@ All patches target **file offsets in the decrypted v1.31
 [`patches/fixes.js`](../patches/fixes.js) has a comment explaining the problem,
 the evidence, and the exact IL written. In total the build applies **36**
 patches: 21 numbered fixes, 14 analytics helper no-ops and the OBB-check skip.
+The companion library's hooks are listed in [11](#11-pet-text-placeholders-in-other-languages)
+and [12](#12-crystals-for-coins).

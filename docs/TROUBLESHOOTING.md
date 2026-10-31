@@ -24,7 +24,7 @@
 |---|---|
 | **Can't find the level map** | Tap the **raccoon by the pond**, or the **Fat Guy** button (bottom right) once it appears |
 | **A house won't open** | Houses unlock as the story progresses — keep playing levels |
-| **Coins/Crystals tab says "Offline"** | Expected — real-money purchases need the original servers |
+| **Coins tab says "Offline"** | Expected — real-money purchases need the original servers. Crystals can be bought with coins in the Crystals tab |
 | **"You aren't connected to the server"** | Expected for accounts, friends and promo codes |
 
 ## Saves

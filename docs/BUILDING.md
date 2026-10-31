@@ -12,6 +12,7 @@ in this repository.
 | Tool | Notes |
 |---|---|
 | [Python 3.8+](https://www.python.org) | Runs the build script |
+| [.NET 8 SDK](https://dotnet.microsoft.com/download) | Compiles the companion library and runs the Mono.Cecil injector (`mod/`) |
 | [Java 11+](https://adoptium.net) | Runs apktool and keytool |
 | [apktool 2.9+](https://apktool.org) | Decodes and rebuilds the APK |
 | Android SDK **build-tools** and **platform-tools** | `zipalign`, `apksigner`, `adb` — e.g. via Android Studio's SDK Manager |
@@ -104,7 +105,9 @@ python tools/build_offline.py --decoded decoded --obb main.20.com.smosh.foodbatt
 ```
 
 The script checks every input against the known v1.31 checksums, applies all
-36 patches, merges the OBB and produces `FoodBattle_Offline.apk` (~68 MB).
+36 patches, compiles and injects the companion library (`mod/`), merges the OBB
+and produces `FoodBattle_Offline.apk` (~68 MB). The first run downloads Mono.Cecil
+from NuGet.
 
 ## 6. Install
 

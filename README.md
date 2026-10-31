@@ -60,10 +60,12 @@ offline behaviour wherever one exists. Join the discord for updates: https://dis
 - ✅ **Starting kit restored** — Celery Sword, clothing, 250 coins, 5 crystals
 - ✅ **Crafting** in the kitchen, **equipment & clothing** in Ian's room
 - ✅ **Shops** — Charlie's chests and the raccoon's shop (in-game currency)
+- ✅ **Crystals for coins** — Stevie's Crystals tab and the revive screen sell crystal packs for coins
 - ✅ **Pets** — buy, equip, feed and level up; pets fight alongside you
 - ✅ **Challenge Mode** — energy works offline (always full)
 - ✅ **No ads**, and no freezes waiting for the ad server
 - ✅ **Local reminder notifications** work again
+- ✅ **Works in every game language** — pet names, levels and abilities show correctly on French, German, Italian and Spanish devices
 - ✅ **Self-contained APK** — the expansion (OBB) data is merged in; nothing else to copy
 
 ## 📱 Compatibility
@@ -106,7 +108,7 @@ These features depended on the original servers or Google Play billing and
 cannot be restored. They now show the game's own **"Offline"** / **"not
 connected"** messages instead of breaking:
 
-- Buying coins or crystals with real money
+- Buying coins or crystals with real money (crystals can be bought with coins instead)
 - Friends, accounts, and Facebook login
 - Promo / redeem codes
 - Restore purchases
@@ -122,8 +124,12 @@ project:
 1. Ships the game code **already decrypted**, so the decryptor is no longer needed.
 2. Writes **36 targeted patches** directly into the game's .NET IL code
    (see [`patches/fixes.js`](patches/fixes.js)).
-3. Merges the 58 MB expansion file into the APK and turns Unity's OBB mode off.
-4. Raises `targetSdkVersion` to 23 so Android 14+ will install it, and removes
+3. Adds a small companion library, [`FoodBattleOffline.dll`](mod/helper/FoodBattleOffline.cs),
+   for the features that need new code (the crystal exchange and the English text
+   fallback), wired into the game with [Mono.Cecil](https://github.com/jbevain/cecil)
+   (see [`mod/injector`](mod/injector/Program.cs)).
+4. Merges the 58 MB expansion file into the APK and turns Unity's OBB mode off.
+5. Raises `targetSdkVersion` to 23 so Android 14+ will install it, and removes
    the x86 engine libraries so PC emulators use their ARM translator.
 
 The interesting part is **finding** the bugs — the full write-up of every
@@ -147,8 +153,9 @@ problem and fix is in **[docs/TECHNICAL.md](docs/TECHNICAL.md)**.
 - **Smosh** (Ian Hecox & Anthony Padilla), **Defy Media** and **Roadhouse
   Interactive** — for making the game in the first place.
 - Built with [Frida](https://frida.re), [apktool](https://apktool.org),
-  [ILSpy](https://github.com/icsharpcode/ILSpy) and
-  [dnfile](https://github.com/malwarefrank/dnfile).
+  [ILSpy](https://github.com/icsharpcode/ILSpy),
+  [dnfile](https://github.com/malwarefrank/dnfile) and
+  [Mono.Cecil](https://github.com/jbevain/cecil).
 
 ## ⚖️ Disclaimer
 
